@@ -15,6 +15,7 @@ import javax.swing.JOptionPane;
 public class Work0412Event extends WindowAdapter implements ActionListener, MouseListener {
 
 	private RunCrudDAO rcDAO;
+	private boolean selectFlag;
 	
 	public Work0412Event(RunCrudDAO rcDAO) {
 		this.rcDAO=rcDAO;
@@ -41,7 +42,8 @@ public class Work0412Event extends WindowAdapter implements ActionListener, Mous
 			rcDAO.getJtfName().setText(arrData[1]);
 			rcDAO.getJtfAge().setText(arrData[2]);
 			rcDAO.getJtfAddr().setText(arrData[3]);
-			
+			//JList의 item이 선택 되었는지 
+			selectFlag = true;
 		}//end catch
 		
 	}//mouseClicked
@@ -66,19 +68,126 @@ public class Work0412Event extends WindowAdapter implements ActionListener, Mous
 
 	}
 
-	@Override
-	public void actionPerformed(ActionEvent ae) {
-		if(ae.getSource()==rcDAO.getJbtnInsert()) {
-			addWork();
-		}//end if
+	   @Override
+	   public void actionPerformed(ActionEvent ae) {
+	      //추가
+	      if(ae.getSource()==rcDAO.getJbtnInsert()) {
+	         addWork();
+	      }//if
+	      
+	      //닫기
+	      if(ae.getSource()==rcDAO.getJbtnClose()) {
+	         rcDAO.dispose();
+	      }//if
+	      
+	      //변경
+	      if(ae.getSource()==rcDAO.getJbtnUpdate()) {
+	         if(!selectFlag) {
+	            JOptionPane.showMessageDialog(rcDAO,"변경하시려는 아이템을 먼저 선택해주세요");
+	            return;
+	         }//end if
+	         modifyWork(); 
+	      }//end if
+	      
+	      //삭제
+	      if(ae.getSource()==rcDAO.getJbtnDelete()) {   
+	    	  if(!selectFlag) {
+	         JOptionPane.showMessageDialog(rcDAO,"삭제하시려는 아이템을 먼저 선택해주세요");
+	         return;
+	    	  }//end if
+	    	  removeWork();
+	      }//end if
+	      
+	      //버튼을 눌러서 작업을 수행하고 난 이후에는 JList의 item선택상태를 해제한다
+	      selectFlag=false;
+	      
+	   }//actionPerformed
+
+	private void removeWork() {
+		//JTextField 의 값을 받아와서 DB에 삭제.
+		String num = rcDAO.getJtfNum().getText().trim(); //사용자가 편집할 수 없음 (read Only)
 		
-		if(ae.getSource()==rcDAO.getJbtnClose()) {
-			rcDAO.dispose();
-		}//end if
-		
-		
-	}//actionPerformed
-	
+		switch(JOptionPane.showConfirmDialog(rcDAO, num+"번 데이터를 삭제하시겠습니까?")) {
+		case JOptionPane.OK_OPTION :
+			Work0412DAO wDAO = Work0412DAO.getInstance();
+			try {
+				int cnt = wDAO.deleteWork(Integer.parseInt(num));
+				String outputMsg = num +"번 데이터가 삭제 되지 않았습니다. 번호를 확인하세요";
+				if (cnt ==1){//삭제 성공한 경우.
+					outputMsg = num +"번 데이터가 삭제되었습니다.";
+					setJListWork();//사용자에게 삭제 후 갱신한거 보여줘야함.
+				}//end if
+				JOptionPane.showMessageDialog(rcDAO, outputMsg);
+			} catch (SQLException se) {
+				se.printStackTrace();
+				JOptionPane.showMessageDialog(rcDAO, "ㅈㅅ! DB에서 문제생겼음ㅋ");
+			}//end catch --NumberFormatException 안떨어짐 -> readOnly라 사용자가 개입할 수 없음.
+		}//end switch
+	   }//removeWork
+	   
+	   private void modifyWork() {
+			//JTextField 의 값을 받아와서 DB에 변경.
+			String num = rcDAO.getJtfNum().getText().trim(); //사용자가 편집할 수 없음 (read Only)
+			String name = rcDAO.getJtfName().getText().trim();
+			String age = rcDAO.getJtfAge().getText().trim();
+			String addr = rcDAO.getJtfAddr().getText().trim();
+			
+			if("".equals(name)) {
+				JOptionPane.showMessageDialog(rcDAO, "이름은 필수 입력");
+				rcDAO.getJtfName().requestFocus(); //커서 갖다놔주는게 좋을듯!
+				return;//아래로 흘러내려가지 못하게 막음
+			}//end if
+			
+			if("".equals(age)) {
+				JOptionPane.showMessageDialog(rcDAO, "나이는 필수 입력");
+				rcDAO.getJtfAge().requestFocus(); //커서 갖다놔주는게 좋을듯!
+				return;//아래로 흘러내려가지 못하게 막음
+			}//end if
+			
+			int intAge = 0;
+			try {
+				intAge = Integer.parseInt(age);
+			}catch(NumberFormatException nfe) {
+				JOptionPane.showMessageDialog(rcDAO, "나이는 숫자로 입력헤주세요");
+				rcDAO.getJtfAge().setText("");
+				rcDAO.getJtfAge().requestFocus(); //커서 갖다놔주는게 좋을듯!
+				return;//아래로 흘러내려가지 못하게 막음
+			}//end catch
+			
+			if("".equals(addr)) {
+				JOptionPane.showMessageDialog(rcDAO, "주소는 필수 입력");
+				rcDAO.getJtfAddr().requestFocus(); //커서 갖다놔주는게 좋을듯!
+				return;//아래로 흘러내려가지 못하게 막음
+			}//end if
+			
+			switch (JOptionPane.showConfirmDialog(rcDAO, name + "의 정보를 변경하시겠습니까?")) {
+			case JOptionPane.OK_OPTION :
+				//유효성 검증이 종료되었다면, 분할되어 있는 값을 VO에 넣는다. (쪼개져있는 값을 하나로 묶어서 쓰려고 VO에 넣는것)
+				WorkAllVO waVO = new WorkAllVO(Integer.parseInt(num), name, intAge, addr);
+				
+				//DB작업을 위한 DAO 클래스 객체 얻기
+				Work0412DAO wDAO = Work0412DAO.getInstance();
+				
+				try {
+					int cnt = wDAO.updateWork(waVO);
+					String outputMsg = waVO.getName()+"님의 정보가 변경되지 않았습니다.";
+					
+					if(cnt ==1) {
+						outputMsg = waVO.getName()+"님의 정보가 변경되었습니다.";
+						setJListWork();//변경 내용을 사용자에게 보여줍니다.
+					}//end if
+					
+					JOptionPane.showMessageDialog(rcDAO, outputMsg);
+				} catch (SQLException se) {
+					se.printStackTrace();
+					JOptionPane.showMessageDialog(rcDAO, "변경작업 중 문제가 발생하였습니다.");
+				}//end catch
+			
+			}//end switch
+			
+	   }//modifyWork
+	   
+	   
 	private void addWork() {
 		//JTextField 의 값을 받아와서 DB에 추가.
 		String name = rcDAO.getJtfName().getText().trim();
@@ -125,8 +234,6 @@ public class Work0412Event extends WindowAdapter implements ActionListener, Mous
 			
 		}//end catch
 
-		
-		
 	}//addWork
 	
 	/**
@@ -162,5 +269,7 @@ public class Work0412Event extends WindowAdapter implements ActionListener, Mous
 		}//end catch
 		
 	}//setJListWork
+	
+	
 
 }//class

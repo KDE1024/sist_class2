@@ -91,9 +91,68 @@ public class Work0412DAO {
 			dc.close(null, pstmt, con);
 			
 		}//end finally
-		
 	}//insertWork
 	
+	/**
+	 * 번호를 가지고 이름, 나이, 주소를 변경하는 일
+	 * @param waVO
+	 * @return
+	 * @throws SQLException
+	 */
+	public int updateWork(WorkAllVO waVO) throws SQLException{
+		int cnt = 0;
+		
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		
+		DbConnection dc = DbConnection.getInstance();
+		//1.
+		try {
+		//2.
+			con = dc.getConnection();
+		//3.
+			String updateWork = "update work set name=?, age=?, addr=? where num=?";
+			pstmt = con.prepareStatement(updateWork);
+		//4. 바인드 변수 총 4개
+			pstmt.setString(1, waVO.getName());
+			pstmt.setInt(2, waVO.getAge());
+			pstmt.setString(3, waVO.getAddr());
+			pstmt.setInt(4, waVO.getNum());
+		//5.
+			cnt = pstmt.executeUpdate();
+		}finally {	
+		//6.
+			dc.close(null, pstmt, con);
+		}//finally
+		
+		return cnt;
+	}//updateWork
+	
+	public int deleteWork(int num) throws SQLException{
+		int cnt = 0;
+		
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		
+		DbConnection dc = DbConnection.getInstance();
+		
+		//1.
+		try {
+		//2.
+			con = dc.getConnection();
+		//3.
+			String deleteWork = "delete from work where num=?";
+			pstmt = con.prepareStatement(deleteWork);
+		//4.
+			pstmt.setInt(1,num);
+		//5.
+			cnt = pstmt.executeUpdate();
+		}finally {
+		//6.
+			dc.close(null, pstmt, con);
+		}//end finally
+		return cnt;
+	}//deleteWork
 	
 	
 }//class
